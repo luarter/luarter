@@ -1,0 +1,36 @@
+local TARGET_GAME_ID = 109983668079237
+local SCRIPT_URL = "https://raw.githubusercontent.com/luarter/luarter/refs/heads/main/scripts/stealabrainrot"
+
+local function getGameId()
+    local ok, id = pcall(function()
+        return game.GameId
+    end)
+    if ok and type(id) == "number" then
+        return id
+    end
+    return nil
+end
+
+local function getPlaceId()
+    local ok, id = pcall(function()
+        return game.PlaceId
+    end)
+    if ok and type(id) == "number" then
+        return id
+    end
+    return nil
+end
+
+local gameId = getGameId()
+local placeId = getPlaceId()
+
+if gameId == TARGET_GAME_ID or placeId == TARGET_GAME_ID then
+    local ok, err = pcall(function()
+        loadstring(game:HttpGet(SCRIPT_URL))()
+    end)
+    if not ok then
+        warn("[Luarter] failed to load script: " .. tostring(err))
+    end
+else
+    warn("[Luarter] wrong game. Current GameId: " .. tostring(gameId) .. " | PlaceId: " .. tostring(placeId) .. " | Expected: " .. TARGET_GAME_ID)
+end

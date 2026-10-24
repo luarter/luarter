@@ -1,5 +1,6 @@
 -- ============================================
 -- REAL CHAT | Глобальный чат через API
+-- API: https://luarter.n1ongmd-a2e.workers.dev
 -- ============================================
 
 local HttpService = game:GetService("HttpService")

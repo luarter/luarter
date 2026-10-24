@@ -1,6 +1,7 @@
 -- ============================================
 -- REAL CHAT | Глобальный чат через API
 -- API: https://luarter.n1ongmd-a2e.workers.dev
+-- Обход блокировки через request
 -- ============================================
 
 local HttpService = game:GetService("HttpService")
@@ -8,8 +9,15 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- ТВОЙ API
 local API_URL = "https://luarter.n1ongmd-a2e.workers.dev"
+
+-- Универсальная функция HTTP-запроса
+local httpRequest = request or syn.request or http_request or http.request
+
+if not httpRequest then
+    warn("request не найден! Используй Delta или другой исполнитель с request.")
+    return
+end
 
 -- ============================================
 -- UI
@@ -142,7 +150,12 @@ local function sendMessage(text)
     })
 
     local ok, err = pcall(function()
-        HttpService:PostAsync(API_URL .. "/send", data, Enum.HttpContentType.ApplicationJson)
+        httpRequest({
+            Url = API_URL .. "/send",
+            Method = "POST",
+            Headers = { ["Content-Type"] = "application/json" },
+            Body = data
+        })
     end)
 
     if not ok then
@@ -172,10 +185,13 @@ local lastCount = 0
 task.spawn(function()
     while gui.Parent do
         local ok, res = pcall(function()
-            return HttpService:GetAsync(API_URL .. "/messages")
+            return httpRequest({
+                Url = API_URL .. "/messages",
+                Method = "GET"
+            }).Body
         end)
 
-        if ok then
+        if ok and res then
             local ok2, msgs = pcall(function()
                 return HttpService:JSONDecode(res)
             end)

@@ -1,0 +1,197 @@
+-- ============================================
+-- REAL CHAT | Глобальный чат через API
+-- ============================================
+
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- ТВОЙ API
+local API_URL = "https://luarter.n1ongmd-a2e.workers.dev"
+
+-- ============================================
+-- UI
+-- ============================================
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "RealChat"
+gui.ResetOnSpawn = false
+gui.Parent = playerGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 340, 0, 420)
+frame.Position = UDim2.new(0.5, -170, 0.5, -210)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 10)
+corner.Parent = frame
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 35)
+title.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+title.Text = "REAL CHAT"
+title.TextColor3 = Color3.fromRGB(255, 200, 0)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+title.Parent = frame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 10)
+titleCorner.Parent = title
+
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, -16, 1, -100)
+scroll.Position = UDim2.new(0, 8, 0, 42)
+scroll.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+scroll.BorderSizePixel = 0
+scroll.ScrollBarThickness = 3
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.Parent = frame
+
+local scrollCorner = Instance.new("UICorner")
+scrollCorner.CornerRadius = UDim.new(0, 6)
+scrollCorner.Parent = scroll
+
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 4)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Parent = scroll
+
+local textBox = Instance.new("TextBox")
+textBox.Size = UDim2.new(1, -80, 0, 36)
+textBox.Position = UDim2.new(0, 8, 1, -44)
+textBox.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+textBox.PlaceholderText = "Сообщение..."
+textBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
+textBox.Font = Enum.Font.Gotham
+textBox.TextSize = 13
+textBox.ClearTextOnFocus = false
+textBox.Parent = frame
+
+local tbCorner = Instance.new("UICorner")
+tbCorner.CornerRadius = UDim.new(0, 6)
+tbCorner.Parent = textBox
+
+local sendBtn = Instance.new("TextButton")
+sendBtn.Size = UDim2.new(0, 64, 0, 36)
+sendBtn.Position = UDim2.new(1, -72, 1, -44)
+sendBtn.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+sendBtn.Text = "SEND"
+sendBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+sendBtn.Font = Enum.Font.GothamBold
+sendBtn.TextSize = 12
+sendBtn.Parent = frame
+
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 6)
+btnCorner.Parent = sendBtn
+
+-- ============================================
+-- ЛОГИКА
+-- ============================================
+
+local msgCount = 0
+
+local function addMessage(name, text, isMine)
+    msgCount = msgCount + 1
+
+    local msgFrame = Instance.new("Frame")
+    msgFrame.Size = UDim2.new(1, -8, 0, 0)
+    msgFrame.AutomaticSize = Enum.AutomaticSize.Y
+    msgFrame.BackgroundTransparency = 1
+    msgFrame.LayoutOrder = msgCount
+    msgFrame.Parent = scroll
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 0)
+    label.AutomaticSize = Enum.AutomaticSize.Y
+    label.BackgroundTransparency = 1
+    label.TextWrapped = true
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 13
+    label.Parent = msgFrame
+
+    if isMine then
+        label.Text = "Я: " .. text
+        label.TextColor3 = Color3.fromRGB(255, 200, 0)
+    else
+        label.Text = name .. ": " .. text
+        label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    end
+
+    task.wait(0.03)
+    scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y)
+    scroll.CanvasPosition = Vector2.new(0, scroll.AbsoluteCanvasSize.Y)
+end
+
+local function sendMessage(text)
+    if text == "" then return end
+
+    local data = HttpService:JSONEncode({
+        name = player.Name,
+        text = text
+    })
+
+    local ok, err = pcall(function()
+        HttpService:PostAsync(API_URL .. "/send", data, Enum.HttpContentType.ApplicationJson)
+    end)
+
+    if not ok then
+        warn("Ошибка отправки: " .. tostring(err))
+    end
+
+    addMessage(player.Name, text, true)
+end
+
+sendBtn.MouseButton1Click:Connect(function()
+    if textBox.Text ~= "" then
+        sendMessage(textBox.Text)
+        textBox.Text = ""
+    end
+end)
+
+textBox.FocusLost:Connect(function(enter)
+    if enter and textBox.Text ~= "" then
+        sendMessage(textBox.Text)
+        textBox.Text = ""
+    end
+end)
+
+-- Поллинг новых сообщений
+local lastCount = 0
+
+task.spawn(function()
+    while gui.Parent do
+        local ok, res = pcall(function()
+            return HttpService:GetAsync(API_URL .. "/messages")
+        end)
+
+        if ok then
+            local ok2, msgs = pcall(function()
+                return HttpService:JSONDecode(res)
+            end)
+
+            if ok2 and type(msgs) == "table" then
+                for i = lastCount + 1, #msgs do
+                    local m = msgs[i]
+                    if m.name ~= player.Name then
+                        addMessage(m.name, m.text, false)
+                    end
+                end
+                lastCount = #msgs
+            end
+        end
+
+        task.wait(2)
+    end
+end)
+
+print("REAL CHAT загружен. API: " .. API_URL)
